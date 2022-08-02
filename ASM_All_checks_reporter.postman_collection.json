@@ -1,0 +1,211 @@
+{
+	"info": {
+		"_postman_id": "f902f307-c558-4edf-9ecc-3f5abb2b46ba",
+		"name": "All checks reporter",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Retrieve and build",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Created by Christian Backström (Apica)",
+							"// Created date: 2021-11-11",
+							"// Last update by: Gaute Holmin (SuperOffice)",
+							"// Last update: 2022-08-02",
+							"// Revision: 1.2",
+							"//",
+							"//",
+							"// Required params in asm: ",
+							"// apiAddress (api-wpm, api-wpm2, api-asm-us1)",
+							"// authTicket (asm auth ticket)",
+							"",
+							"pm.test(\"Response must be valid and have a json body\", function () {",
+							"     pm.response.to.be.ok;",
+							"     pm.response.to.be.withBody;",
+							"     pm.response.to.be.json;",
+							"     pm.expect(pm.response.text()).to.include(\"guid\");",
+							"     pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/json\\; charset=utf-8');",
+							"});",
+							"",
+							"var jsonData = pm.response.json();",
+							"pm.collectionVariables.set(\"jsonLength\", jsonData.length);",
+							"var checkArray = {",
+							"    checks: []",
+							"};",
+							"",
+							"for (let i = 0; i < jsonData.length; i++) {",
+							"    var inputData = [",
+							"        {checkName: jsonData[i].name, checkID: jsonData[i].id, severity: jsonData[i].severity, responseTime: jsonData[i].value}",
+							"    ];",
+							"",
+							"    inputData.map(function(item) {        ",
+							"        checkArray.checks.push({ ",
+							"            \"checkName\" :   item.checkName,",
+							"            \"checkID\" : item.checkID,",
+							"            \"severity\"  : item.severity,",
+							"            \"responseTime\"       : item.responseTime ",
+							"        });",
+							"    });",
+							"}",
+							"pm.test(\"Created array must be populated\", function () {",
+							"    console.log(checkArray.checks[0].checkID)",
+							"    pm.expect(checkArray.checks[0].checkID).to.not.be.undefined;",
+							"});",
+							"var jsonString = JSON.stringify(checkArray);",
+							"pm.collectionVariables.set(\"jsonString\", jsonString);",
+							""
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const items = ['api-wpm', 'api-wpm2', 'api-asm-us1'];",
+							"pm.expect(items).to.contain(pm.environment.get(\"apiAddress\"));",
+							"",
+							"",
+							"var pattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;",
+							"if (pattern.test(pm.environment.get(\"authTicket\")) === false) {",
+							"  throw new Error(\"Your auth ticket isn't a valid auth ticket\");",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://{{apiAddress}}.apicasystem.com/v3/checks?enabled=true&auth_ticket={{authTicket}}",
+					"protocol": "https",
+					"host": [
+						"{{apiAddress}}",
+						"apicasystem",
+						"com"
+					],
+					"path": [
+						"v3",
+						"checks"
+					],
+					"query": [
+						{
+							"key": "enabled",
+							"value": "true"
+						},
+						{
+							"key": "auth_ticket",
+							"value": "{{authTicket}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "POST to webhook",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Response must be 204\", function () {",
+							"     pm.response.to.have.status(204);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"var bodyInput = \"# Latest Apica Synthetic Monitoring Results: \\\\n\";",
+							"var length = pm.collectionVariables.get(\"jsonLength\");",
+							"var checkArray = JSON.parse(pm.collectionVariables.get(\"jsonString\"));",
+							"console.log(checkArray);",
+							"for (let i = 0; i < length; i++) {",
+							"    bodyInput += \"### [\" + checkArray.checks[i].checkName + \"](https://wpm2.apicasystem.com/Check/Details/\" + checkArray.checks[i].checkID + \")\\\\n\";",
+							"    bodyInput += \"##### CheckID: \" + checkArray.checks[i].checkID + \"\\\\n\";",
+							"    bodyInput += \"##### Severity: \" + checkArray.checks[i].severity + \"\\\\n\";",
+							"    bodyInput += \"##### Response Time: \" + checkArray.checks[i].responseTime + \"\\\\n\\\\n\\\\n\";",
+							"}",
+							"bodyInput = '\"' + bodyInput + '\"';",
+							"pm.collectionVariables.set(\"bodyInput\", bodyInput);",
+							"console.log(bodyInput);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"markdown\": {{bodyInput}}}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://webexapis.com/v1/webhooks/incoming/{{WebexKey}}",
+					"protocol": "https",
+					"host": [
+						"webexapis",
+						"com"
+					],
+					"path": [
+						"v1",
+						"webhooks",
+						"incoming",
+						"{{WebexKey}}"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "jsonString",
+			"value": ""
+		},
+		{
+			"key": "jsonLength",
+			"value": ""
+		},
+		{
+			"key": "bodyInput",
+			"value": ""
+		}
+	]
+}
