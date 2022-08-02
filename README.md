@@ -7,4 +7,4 @@ The script uses three variables that you need to configure in the Apica ASM port
 
     apiAddress=api-wpm2,authTicket={auth_ticket},WebexKey={webex_key}
     
-The script was originally developed by Christian Backstrøm from Apica Systems AB, then later slightly modified by Gaute Holmin from SuperOffice AS. For more help, look to the Apica documentation on how to set up a Postman check. 
+The script was originally developed by Christian Backström from Apica Systems AB, then later slightly modified by Gaute Holmin from SuperOffice AS. For more help, look to the Apica documentation on how to set up a Postman check. 
